@@ -42,7 +42,7 @@
         body: form
       });
       const json = await res.json();
-      output.textContent = "You said: " + json.text;
+      output.textContent = "You said: " + (json.text || "nothing — try again!");
     }
   </script>
 </body>
