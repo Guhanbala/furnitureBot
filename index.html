@@ -2,24 +2,28 @@
 <html>
 <head>
   <title>V Furnish</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {font-family:Arial; text-align:center; padding:50px; background:#fff8e7}
-    button {padding:20px 40px; font-size:22px; background:#ff4500; color:white; border:none; border-radius:15px}
+    button {padding:20px 40px; font-size:22px; background:#ff4500; color:white; border:none; border-radius:15px; cursor:pointer}
     #text {margin-top:30px; font-size:24px; color:#d4380d; font-weight:bold}
   </style>
 </head>
 <body>
   <h1>V Furnish Voice Assistant</h1>
   <button id="rec">SPEAK NOW</button>
-  <div id="text">👂 Listening...</div>
+  <div id="text">Listening...</div>
 
-  <script>
+  <script type="module">
+    // HIDDEN KEY FROM GITHUB SECRETS
+    const OPENAI_KEY = "<%= process.env.OPENAI_KEY %>";
+
     const button = document.getElementById('rec');
     const output = document.getElementById('text');
     let rec, chunks = [];
 
     button.onclick = async () => {
-      output.textContent = "Recording 4 seconds...";
+      output.textContent = "Recording 4 sec...";
       chunks = [];
       const stream = await navigator.mediaDevices.getUserMedia({audio:true});
       rec = new MediaRecorder(stream);
@@ -38,11 +42,15 @@
 
       const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer sk-proj-wqaw2UlkaXqXynoxVida6K1lhJKcSpG_LHhWoyeRx5fH31fiJ0MfIvlzzdesXSmacA2NctuHJgT3BlbkFJo8YN04Q0JPaEtT0AVUzGI2Udq6nea1N7Bw8agOLhGZjtWAt-pvjBSvGvQUGu88yATnWKjkvCEAE' },
+        headers: {
+          'Authorization': 'Bearer ' + OPENAI_KEY
+        },
         body: form
       });
-      const json = await res.json();
-      output.textContent = "You said: " + (json.text || "nothing — try again!");
+
+      const data = await res.json();
+      console.log(data);
+      output.textContent = "You said: " + (data.text || "nothing — try again!");
     }
   </script>
 </body>
