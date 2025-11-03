@@ -1,56 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>V Furnish</title>
+  <title>V Furnish Voice Assistant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body {font-family:Arial; text-align:center; padding:50px; background:#fff8e7}
-    button {padding:20px 40px; font-size:22px; background:#ff4500; color:white; border:none; border-radius:15px; cursor:pointer}
-    #text {margin-top:30px; font-size:24px; color:#d4380d; font-weight:bold}
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+      background: #fff8e7;
+    }
+    button {
+      padding: 20px 40px;
+      font-size: 22px;
+      background: #ff4500;
+      color: white;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+    }
+    #text {
+      margin-top: 30px;
+      font-size: 24px;
+      color: #d4380d;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <h1>V Furnish Voice Assistant</h1>
-  <button id="rec">SPEAK NOW</button>
-  <div id="text">Listening...</div>
+  <button id="rec">🎤 SPEAK NOW</button>
+  <div id="text">Press the button and speak for 4 seconds...</div>
 
   <script type="module">
-    // HIDDEN KEY FROM GITHUB SECRETS
-    const OPENAI_KEY = "<%= process.env.OPENAI_KEY %>";
+    const HF_TOKEN = "hf_moBpyzfWppUGwsqWXBrvfjkrovJuDGVdBLE";
+    const HF_MODEL_URL = "https://api-inference.huggingface.co/models/guillaumekln/faster-whisper-tiny";
 
     const button = document.getElementById('rec');
     const output = document.getElementById('text');
     let rec, chunks = [];
 
     button.onclick = async () => {
-      output.textContent = "Recording 4 sec...";
-      chunks = [];
-      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      rec = new MediaRecorder(stream);
-      rec.ondataavailable = e => chunks.push(e.data);
-      rec.onstop = () => sendToWhisper();
-      rec.start();
-      setTimeout(() => rec.stop(), 4000);
+      try {
+        output.textContent = "🎙️ Recording for 4 seconds...";
+        chunks = [];
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        rec = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+        rec.ondataavailable = e => chunks.push(e.data);
+        rec.onstop = () => {
+          console.log("Recording stopped, chunks:", chunks.length);
+          sendToHF();
+        };
+
+        rec.start();
+        setTimeout(() => rec.stop(), 4000);
+      } catch (err) {
+        console.error("Microphone access error:", err);
+        output.textContent = "⚠️ Microphone not accessible!";
+      }
     };
 
-    async function sendToWhisper() {
-      output.textContent = "Sending to cloud...";
-      const blob = new Blob(chunks, {type: 'audio/webm'});
-      const form = new FormData();
-      form.append('file', blob, 'voice.webm');
-      form.append('model', 'whisper-1');
+    async function sendToHF() {
+      try {
+        output.textContent = "⏳ Processing...";
+        const blob = new Blob(chunks, { type: 'audio/webm' });
 
-      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + OPENAI_KEY
-        },
-        body: form
-      });
+        const res = await fetch(HF_MODEL_URL, {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + HF_TOKEN },
+          body: blob
+        });
 
-      const data = await res.json();
-      console.log(data);
-      output.textContent = "You said: " + (data.text || "nothing — try again!");
+        const data = await res.json();
+        console.log("API Response:", data);
+
+        if (data.text) {
+          output.textContent = "🗣️ You said: " + data.text.trim();
+        } else if (data.error) {
+          output.textContent = "⚠️ Error: " + data.error;
+        } else {
+          output.textContent = "🤔 Couldn't understand — try again!";
+        }
+
+      } catch (err) {
+        console.error("Error sending to HF:", err);
+        output.textContent = "⚠️ Network or API error!";
+      }
     }
   </script>
 </body>
